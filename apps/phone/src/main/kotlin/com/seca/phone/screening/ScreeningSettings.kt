@@ -13,6 +13,9 @@ enum class BlockMode {
 
     /** Shown without ringing nor vibrating, for the owner to take or leave. */
     Silence,
+
+    /** Shown with a spam warning on screen, for the owner to answer or decline. */
+    Warn,
 }
 
 /** How long blocked profiles stay blocked. */

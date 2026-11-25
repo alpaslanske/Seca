@@ -596,15 +596,19 @@ private fun SearchResults(ui: PhoneUi, actions: RowActions) {
     val contacts = remember(ui.contacts, query) {
         val name = searchable(query)
         ui.contacts.filter { contact ->
+            val org = contact.organization
             contact.phoneNumbers.isNotEmpty() &&
                 (searchable(contact.displayName).contains(name) ||
+                    (org != null && searchable(org).contains(name)) ||
                     (digits >= 2 && contact.phoneNumbers.any { ui.numbers.matchesDigits(it.raw, query) }))
         }
     }
     val calls = remember(ui.groups, query) {
         val name = searchable(query)
         ui.groups.filter { group ->
-            group.match?.contact?.displayName?.let { searchable(it).contains(name) } == true ||
+            val contact = group.match?.contact
+            val org = contact?.organization
+            (contact != null && (searchable(contact.displayName).contains(name) || (org != null && searchable(org).contains(name)))) ||
                 (digits >= 2 && group.latest.callable && ui.numbers.matchesDigits(group.latest.number, query))
         }.take(MAX_CALL_RESULTS)
     }

@@ -45,6 +45,10 @@
     <string name="blocked_profiles_silenced">%1$s · تماس‌ها بی‌صدا می‌شود</string>
     <string name="blocked_silenced">تماس‌هایشان بی‌صدا زنگ می‌خورد</string>
     <string name="blocked_until">%1$s تا %2$s</string>
+    <string name="warn_on_screen">هشدار</string>
+    <string name="block_warn_hint">تماس به طور معمولی زنگ می‌خورد اما هشدار هرزنامه روی صفحه نمایش داده می‌شود تا تصمیم بگیرید.</string>
+    <string name="suspected_spam_call">تماس مشکوک به هرزنامه</string>
+    <string name="telemarketing_call">تماس تبلیغاتی</string>
     <string name="call">تماس</string>
     <string name="call_back">تماس مجدد</string>
     <string name="call_blocked">تماس مسدودشده</string>

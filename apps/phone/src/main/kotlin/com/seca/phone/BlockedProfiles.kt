@@ -119,9 +119,16 @@ internal fun BlockedProfilesDialog(ui: PhoneUi, viewModel: PhoneViewModel, onDis
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             SecaChoicePill(stringResource(R.string.decline), selected = ui.blockMode == BlockMode.Decline, onClick = { viewModel.setBlockMode(BlockMode.Decline) })
                             SecaChoicePill(stringResource(R.string.silently), selected = ui.blockMode == BlockMode.Silence, onClick = { viewModel.setBlockMode(BlockMode.Silence) })
+                            SecaChoicePill(stringResource(R.string.warn_on_screen), selected = ui.blockMode == BlockMode.Warn, onClick = { viewModel.setBlockMode(BlockMode.Warn) })
                         }
                         Text(
-                            text = stringResource(if (ui.blockMode == BlockMode.Decline) R.string.block_decline_hint else R.string.block_silence_hint),
+                            text = stringResource(
+                                when (ui.blockMode) {
+                                    BlockMode.Decline -> R.string.block_decline_hint
+                                    BlockMode.Silence -> R.string.block_silence_hint
+                                    BlockMode.Warn -> R.string.block_warn_hint
+                                }
+                            ),
                             style = MaterialTheme.typography.bodySmall,
                             color = colors.onSurfaceVariant,
                             modifier = Modifier.padding(top = 8.dp),

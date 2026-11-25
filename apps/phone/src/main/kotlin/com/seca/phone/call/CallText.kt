@@ -9,14 +9,21 @@ import com.seca.core.model.Profile
 import android.content.Context
 import com.seca.phone.R
 
+import com.seca.phone.screening.Telemarketing
+
 /** How to name the other side of a call, on the screen and in the notification. */
-internal fun CallView.title(context: Context, numbers: PhoneNumbers): String = when {
-    caller != null -> caller.name
-    networkName != null -> networkName
-    presentation == TelecomManager.PRESENTATION_RESTRICTED -> context.getString(R.string.hidden_number)
-    presentation == TelecomManager.PRESENTATION_PAYPHONE -> context.getString(R.string.payphone)
-    number.isBlank() -> context.getString(R.string.unknown_number)
-    else -> numbers.display(number)
+internal fun CallView.title(context: Context, numbers: PhoneNumbers): String {
+    val e164 = if (number.isBlank()) null else numbers.toE164(number)
+    val isSpam = e164 != null && Telemarketing.isTelemarketing(e164, number)
+    return when {
+        caller != null -> caller.name
+        isSpam -> context.getString(R.string.suspected_spam_call)
+        networkName != null -> networkName
+        presentation == TelecomManager.PRESENTATION_RESTRICTED -> context.getString(R.string.hidden_number)
+        presentation == TelecomManager.PRESENTATION_PAYPHONE -> context.getString(R.string.payphone)
+        number.isBlank() -> context.getString(R.string.unknown_number)
+        else -> numbers.display(number)
+    }
 }
 
 /** Where the call stands, in words. */
@@ -36,15 +43,18 @@ internal fun CallView.status(context: Context): String = when (state) {
  * for when someone calls — and the kind of number. Only the number for
  * someone who is not a contact.
  */
-internal fun CallView.subtitle(numbers: PhoneNumbers, resources: Resources): String? = when {
-    caller != null -> listOfNotNull(
-        caller.profile.name.takeIf { caller.profile.id != Profile.Principal.id },
-        caller.numberLabel,
-    ).joinToString(" · ").ifEmpty { null }
-    number.isNotBlank() && presentation == TelecomManager.PRESENTATION_ALLOWED && networkName != null -> numbers.display(number)
-    // Where the line is from, which in a numbering plan tied to geography is the town and
-    // the province; the country alone elsewhere, and nothing for a number from home (#93).
-    else -> numbers.originOf(number, resources)
+internal fun CallView.subtitle(numbers: PhoneNumbers, resources: Resources): String? {
+    val e164 = if (number.isBlank()) null else numbers.toE164(number)
+    val isSpam = e164 != null && Telemarketing.isTelemarketing(e164, number)
+    return when {
+        caller != null -> listOfNotNull(
+            caller.profile.name.takeIf { caller.profile.id != Profile.Principal.id },
+            caller.numberLabel,
+        ).joinToString(" · ").ifEmpty { null }
+        isSpam -> resources.getString(R.string.telemarketing_call)
+        number.isNotBlank() && presentation == TelecomManager.PRESENTATION_ALLOWED && networkName != null -> numbers.display(number)
+        else -> numbers.originOf(number, resources)
+    }
 }
 
 /** "02:31", or "1:02:31" past an hour. */

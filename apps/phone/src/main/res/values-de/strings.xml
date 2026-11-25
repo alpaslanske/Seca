@@ -50,6 +50,10 @@
     <string name="blocked_profiles_silenced">%1$s · Anrufe stummgeschaltet</string>
     <string name="blocked_silenced">Ihre Anrufe klingeln lautlos</string>
     <string name="blocked_until">%1$s bis %2$s</string>
+    <string name="warn_on_screen">Warnen</string>
+    <string name="block_warn_hint">Der Anruf klingelt normal, zeigt aber eine Spam-Warnung auf dem Bildschirm an, damit Sie entscheiden können.</string>
+    <string name="suspected_spam_call">Verdächtiger Spam-Anruf</string>
+    <string name="telemarketing_call">Werbeanruf</string>
     <string name="call">Anrufen</string>
     <string name="call_back">Zurückrufen</string>
     <string name="call_blocked">Blockierter Anruf</string>

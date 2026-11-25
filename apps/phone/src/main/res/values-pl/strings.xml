@@ -52,6 +52,10 @@
     <string name="blocked_profiles_silenced">%1$s · połączenia wyciszone</string>
     <string name="blocked_silenced">Ich połączenia dzwonią po cichu</string>
     <string name="blocked_until">%1$s do %2$s</string>
+    <string name="warn_on_screen">Ostrzegaj</string>
+    <string name="block_warn_hint">Połączenie dzwoni normalnie, ale wyświetla ostrzeżenie o spamie na ekranie, abyś mógł zdecydować.</string>
+    <string name="suspected_spam_call">Podejrzany spam</string>
+    <string name="telemarketing_call">Telemarketing</string>
     <string name="call">Zadzwoń</string>
     <string name="call_back">Oddzwoń</string>
     <string name="call_blocked">Połączenie zablokowane</string>

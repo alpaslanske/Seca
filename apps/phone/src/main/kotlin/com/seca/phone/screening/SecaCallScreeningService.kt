@@ -38,13 +38,8 @@ class SecaCallScreeningService : CallScreeningService() {
         }
 
         val e164 = if (raw.isBlank()) null else PhoneNumbers(PhoneNumbers.detectRegion(this)).toE164(raw)
-        if (settings.blockTelemarketing && e164 != null && Telemarketing.isTelemarketing(e164)) {
-            // Turned away without ringing; the call stays in the history as blocked.
-            return CallResponse.Builder()
-                .setDisallowCall(true)
-                .setRejectCall(true)
-                .setSkipNotification(true)
-                .build()
+        if (settings.blockTelemarketing && (e164 != null && Telemarketing.isTelemarketing(e164, raw))) {
+            return held(settings.blockMode)
         }
         if (settings.silenceUnknown) {
             return CallResponse.Builder().setSilenceCall(true).build()
@@ -73,6 +68,7 @@ class SecaCallScreeningService : CallScreeningService() {
             .setSkipNotification(true)
             .build()
         BlockMode.Silence -> CallResponse.Builder().setSilenceCall(true).build()
+        BlockMode.Warn -> CallResponse.Builder().build()
     }
 
     /** The lookup keys of the contacts [raw] belongs to; empty for someone not in the contacts. */
