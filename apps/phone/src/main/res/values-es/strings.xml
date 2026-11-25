@@ -53,7 +53,7 @@
     <string name="blocked_silenced">Sus llamadas suenan en silencio</string>
     <string name="blocked_until">%1$s hasta %2$s</string>
     <string name="warn_on_screen">Advertir</string>
-    <string name="block_warn_hint">La llamada suena normalmente, pero muestra una advertencia de spam en pantalla para que usted decida.</string>
+    <string name="block_warn_hint">La llamada suena normalmente, pero muestra una advertencia en pantalla para que usted decida.</string>
     <string name="suspected_spam_call">Llamada sospechosa de spam</string>
     <string name="telemarketing_call">Llamada comercial</string>
     <string name="call">Llamar</string>

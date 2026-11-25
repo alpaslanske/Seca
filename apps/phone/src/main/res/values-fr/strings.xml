@@ -53,7 +53,7 @@
     <string name="blocked_silenced">Leurs appels sonnent en silence</string>
     <string name="blocked_until">%1$s jusqu\'à %2$s</string>
     <string name="warn_on_screen">Avertir</string>
-    <string name="block_warn_hint">L\'appel sonne normalement, mais affiche un avertissement de spam à l\'écran pour que vous puissiez décider.</string>
+    <string name="block_warn_hint">L\'appel sonne normalement, mais affiche un avertissement à l\'écran pour que vous puissiez décider.</string>
     <string name="suspected_spam_call">Appel indésirable suspecté</string>
     <string name="telemarketing_call">Appel démarchage</string>
     <string name="call">Appeler</string>

@@ -51,7 +51,7 @@
     <string name="blocked_silenced">Bu kişiler aradığında telefon sessizce çalar</string>
     <string name="blocked_until">%1$s, bitiş: %2$s</string>
     <string name="warn_on_screen">Uyar</string>
-    <string name="block_warn_hint">Arama normal şekilde çalar, ancak karar vermeniz için ekranda spam uyarısı gösterilir.</string>
+    <string name="block_warn_hint">Arama normal şekilde çalar, ancak karar vermeniz için ekranda uyarı gösterilir.</string>
     <string name="suspected_spam_call">Şüpheli Spam Arama</string>
     <string name="telemarketing_call">Pazarlama Araması</string>
     <string name="call">Ara</string>

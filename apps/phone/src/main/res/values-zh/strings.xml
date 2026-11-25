@@ -49,7 +49,7 @@
     <string name="blocked_silenced">他们的来电静音显示</string>
     <string name="blocked_until">%1$s，直到%2$s</string>
     <string name="warn_on_screen">警告</string>
-    <string name="block_warn_hint">电话正常响铃，但在屏幕上显示垃圾邮件警告，由您决定是否接听。</string>
+    <string name="block_warn_hint">电话正常响铃，但在屏幕上显示警告，由您决定是否接听。</string>
     <string name="suspected_spam_call">疑似垃圾电话</string>
     <string name="telemarketing_call">推销电话</string>
     <string name="call">拨打</string>

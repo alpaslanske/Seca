@@ -51,7 +51,7 @@
     <string name="blocked_silenced">Their calls ring silently</string>
     <string name="blocked_until">%1$s until %2$s</string>
     <string name="warn_on_screen">Warn</string>
-    <string name="block_warn_hint">The call rings normally, but displays a spam warning on screen for you to decide.</string>
+    <string name="block_warn_hint">The call rings normally, but displays a warning on screen for you to decide.</string>
     <string name="suspected_spam_call">Suspected Spam Call</string>
     <string name="telemarketing_call">Telemarketing Call</string>
     <string name="call">Call</string>
