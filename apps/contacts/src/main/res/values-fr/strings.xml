@@ -185,7 +185,7 @@
     <string name="photo_not_saved">Ce téléphone a refusé d\'enregistrer la photo pour ce contact.</string>
     <string name="pick_date">Choisir une date</string>
     <string name="privacy">Confidentialité</string>
-    <string name="privacy_text">Seca Contacts n\'a pas accès à Internet. Vos contacts, vos profils et vos réglages ne quittent jamais l\'appareil, et les contacts créés ici ne sont synchronisés avec aucun compte.</string>
+    <string name="privacy_text">Seca Contacts n\'a pas accès à Internet. Les groupes de profils sont enregistrés dans les contacts du téléphone et peuvent être synchronisés par le compte de contacts, comme Google. Les contacts créés ici suivent les réglages de synchronisation du compte choisi.</string>
     <string name="privacy_title">Tout reste sur ce téléphone</string>
     <string name="profile">Profil</string>
     <string name="profile_empty">« %1$s » est vide</string>

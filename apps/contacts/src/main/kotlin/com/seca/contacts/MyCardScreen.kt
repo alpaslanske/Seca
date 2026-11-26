@@ -72,7 +72,7 @@ internal const val MY_CARD_SEED = "ma-fiche"
  * A QR code hands the card to someone standing by, without any network.
  */
 @Composable
-internal fun MyCardScreen(ui: ContactsUi, viewModel: ContactsViewModel) {
+internal fun MyCardScreen(ui: ContactsUi, viewModel: ContactsViewModel, withWrite: (() -> Unit) -> Unit) {
     val context = LocalContext.current
     var name by remember { mutableStateOf(ui.myCard.name) }
     val typed = remember { mutableStateListOf<String>().apply { addAll(ui.myCard.numbers.ifEmpty { listOf("") }) } }
@@ -80,6 +80,7 @@ internal fun MyCardScreen(ui: ContactsUi, viewModel: ContactsViewModel) {
     val shareable = myCardNumbers(ui, typed)
     val leave: () -> Unit = {
         viewModel.saveMyCard(name, typed.toList())
+        withWrite { viewModel.syncMyCardToSystem() }
         viewModel.back()
     }
     BackHandler(onBack = leave)
@@ -94,7 +95,9 @@ internal fun MyCardScreen(ui: ContactsUi, viewModel: ContactsViewModel) {
             onCancel = { framing = null },
             onCropped = { jpeg ->
                 framing = null
-                viewModel.setMyPhoto(jpeg)
+                viewModel.setMyPhoto(jpeg) {
+                    withWrite { viewModel.syncMyCardToSystem() }
+                }
             },
         )
     }
@@ -153,7 +156,14 @@ internal fun MyCardScreen(ui: ContactsUi, viewModel: ContactsViewModel) {
                     }
                 }
                 if (ui.myPhoto != null) {
-                    TextButton(onClick = viewModel::removeMyPhoto, modifier = Modifier.padding(top = 8.dp)) {
+                    TextButton(
+                        onClick = {
+                            viewModel.removeMyPhoto {
+                                withWrite { viewModel.syncMyCardToSystem() }
+                            }
+                        },
+                        modifier = Modifier.padding(top = 8.dp),
+                    ) {
                         Text(stringResource(R.string.remove_photo))
                     }
                 }

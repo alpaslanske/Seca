@@ -16,11 +16,11 @@ import java.util.UUID
 /**
  * Seca's own contact categories ("profiles") and preferences.
  *
- * Kept in this app's private storage, on the device only. Other apps on the
- * phone cannot see which profile a contact belongs to; the Seca apps signed
- * with the same key read them through [ProfilesProvider], and every change is
- * announced so they refresh. Assignments are keyed by the contact's lookup
- * key, which survives the provider re-aggregating contacts, unlike its row id.
+ * The profiles and assignments live in this app's private storage; their system-group
+ * counterparts are mirrored through ContactsContract. Other apps on the phone cannot read
+ * Seca's preferences; Seca apps signed with the same key read them through [ProfilesProvider].
+ * Assignments are keyed by the contact's lookup key, which survives the provider
+ * re-aggregating contacts, unlike its row id.
  */
 class ProfileStore(context: Context) {
 
@@ -67,7 +67,8 @@ class ProfileStore(context: Context) {
 
     /** Replaces every assignment at once, announcing a single change: for a backup being restored. */
     fun assignAll(assignments: Map<String, String>) {
-        saveAssignments(assignments.filter { (key, profileId) -> key.isNotEmpty() && profileId != Principal.id })
+        val kept = assignments.filter { (key, profileId) -> key.isNotEmpty() && profileId != Principal.id }
+        if (kept != assignments()) saveAssignments(kept)
     }
 
     /** [ALL] until the owner picks a profile: the list opens on every contact. */

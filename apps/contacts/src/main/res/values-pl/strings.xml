@@ -182,7 +182,7 @@
     <string name="photo_not_saved">Ten telefon nie zapisał zdjęcia dla tego kontaktu.</string>
     <string name="pick_date">Wybierz datę</string>
     <string name="privacy">Prywatność</string>
-    <string name="privacy_text">Aplikacja Seca Kontakty nie ma dostępu do internetu. Twoje kontakty, profile i ustawienia nigdy nie opuszczają urządzenia, a kontakty utworzone tutaj nie są synchronizowane z żadnym kontem.</string>
+    <string name="privacy_text">Aplikacja Seca Kontakty nie ma dostępu do internetu. Grupy profili są zapisywane w kontaktach telefonu i mogą być synchronizowane przez konto kontaktów, na przykład Google. Kontakty utworzone tutaj podlegają ustawieniom synchronizacji wybranego konta.</string>
     <string name="privacy_title">Wszystko pozostaje na tym telefonie</string>
     <string name="profile">Profil</string>
     <string name="profile_empty">Profil „%1$s” jest pusty</string>

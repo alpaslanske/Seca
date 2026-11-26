@@ -174,7 +174,7 @@
     <string name="photo_not_saved">Dieses Gerät wollte das Foto für diesen Kontakt nicht speichern.</string>
     <string name="pick_date">Datum auswählen</string>
     <string name="privacy">Datenschutz</string>
-    <string name="privacy_text">Seca Kontakte hat keinen Internetzugriff. Deine Kontakte, Profile und Einstellungen verlassen das Gerät nie, und hier erstellte Kontakte werden ohne Konto synchronisiert.</string>
+    <string name="privacy_text">Seca Kontakte hat keinen Internetzugriff. Profilgruppen werden in die Telefonkontakte geschrieben und können über das Kontaktkonto, etwa Google, synchronisiert werden. Hier erstellte Kontakte folgen den Synchronisierungseinstellungen des gewählten Kontos.</string>
     <string name="privacy_title">Alles bleibt auf diesem Gerät</string>
     <string name="profile">Profil</string>
     <string name="profile_empty">„%1$s“ ist leer</string>

@@ -24,8 +24,8 @@ data class MyCard(
 )
 
 /**
- * Keeps "My card" in this app's private storage, never in the shared
- * contacts: other apps cannot read it, and it is not synced anywhere.
+ * Keeps Seca's copy of "My card" in private storage. The editable fields are
+ * mirrored to Android's system profile card when contacts-write access is granted.
  */
 class MyCardStore(private val context: Context) {
 
@@ -49,6 +49,10 @@ class MyCardStore(private val context: Context) {
 
     suspend fun photo(): Bitmap? = withContext(Dispatchers.IO) {
         if (photoFile.exists()) BitmapFactory.decodeFile(photoFile.path) else null
+    }
+
+    suspend fun photoBytes(): ByteArray? = withContext(Dispatchers.IO) {
+        photoFile.takeIf(File::exists)?.readBytes()
     }
 
     /** Keeps the square the owner framed. Nothing is decoded here: it arrives already cut. */
@@ -81,6 +85,14 @@ class MyCardStore(private val context: Context) {
 
     fun removePhoto() {
         photoFile.delete()
+    }
+
+    suspend fun replacePhoto(photo: ByteArray?) {
+        if (photo == null) {
+            removePhoto()
+        } else {
+            setPhoto(photo)
+        }
     }
 
     private companion object {

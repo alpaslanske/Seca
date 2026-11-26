@@ -163,7 +163,7 @@
     <string name="photo_not_saved">这部手机不肯为这位联系人保存照片。</string>
     <string name="pick_date">选择日期</string>
     <string name="privacy">隐私</string>
-    <string name="privacy_text">Seca 通讯录没有联网权限。你的联系人、资料组和设置都不会离开手机，在这里新建的联系人也不与任何账户同步。</string>
+    <string name="privacy_text">Seca 通讯录没有联网权限。资料组会写入手机通讯录，并可能通过联系人账户（例如 Google）同步。在此创建的联系人遵循所选账户的同步设置。</string>
     <string name="privacy_title">一切都留在这部手机上</string>
     <string name="profile">资料组</string>
     <string name="profile_empty">“%1$s”还是空的</string>

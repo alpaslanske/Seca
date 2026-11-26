@@ -122,6 +122,9 @@ data class ContactDetail(
  */
 data class ContactLabel(val id: Long, val title: String, val members: Int)
 
+/** The fields Seca keeps for the owner's card, as held by Android's own profile. */
+data class SystemProfileCard(val name: String, val numbers: List<String>, val photo: ByteArray?)
+
 /**
  * A field the owner named themselves: "Blood type", "Locker", "Allergies".
  *
@@ -235,6 +238,7 @@ class ContactsRepository(
             }
         }
         resolver.registerContentObserver(Contacts.CONTENT_URI, true, observer)
+        resolver.registerContentObserver(ContactsContract.Profile.CONTENT_URI, true, observer)
         awaitClose { resolver.unregisterContentObserver(observer) }
     }
 
@@ -956,22 +960,40 @@ class ContactsRepository(
         }
     }
 
-    /** Assigns a contact (by [lookupKey]) to a system group [groupId], removing any previous group memberships. */
-    suspend fun assignContactToGroup(lookupKey: String, groupId: Long?) = withContext(Dispatchers.IO) {
+    /**
+     * Mirrors a Seca profile to a system group without removing memberships in unrelated labels.
+     * [managedGroupIds] are the groups Seca owns or has linked to a profile.
+     */
+    suspend fun assignContactToGroup(
+        lookupKey: String,
+        groupId: Long?,
+        managedGroupIds: Set<Long>,
+    ) = withContext(Dispatchers.IO) {
         if (lookupKey.isBlank()) return@withContext
-        runCatching {
-            val rawContactId = primaryRawContact(idFromLookup(lookupKey) ?: return@withContext) ?: return@withContext
-            resolver.delete(
-                Data.CONTENT_URI,
-                "${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} = ?",
-                arrayOf(rawContactId.toString(), GroupMembership.CONTENT_ITEM_TYPE),
-            )
-            if (groupId != null && groupId > 0) {
-                val values = ContentValues().apply {
-                    put(Data.RAW_CONTACT_ID, rawContactId)
-                    put(Data.MIMETYPE, GroupMembership.CONTENT_ITEM_TYPE)
-                    put(GroupMembership.GROUP_ROW_ID, groupId)
-                }
+        val rawContactId = primaryRawContact(idFromLookup(lookupKey) ?: return@withContext) ?: return@withContext
+        val memberships = resolver.query(
+            Data.CONTENT_URI,
+            arrayOf(Data._ID, GroupMembership.GROUP_ROW_ID),
+            "${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} = ?",
+            arrayOf(rawContactId.toString(), GroupMembership.CONTENT_ITEM_TYPE),
+            null,
+        )?.use { cursor ->
+            buildList {
+                while (cursor.moveToNext()) add(cursor.getLong(0) to cursor.getLong(1))
+            }
+        }.orEmpty()
+        memberships.filter { (_, id) -> id in managedGroupIds }.forEach { (rowId, _) ->
+            resolver.delete(ContentUris.withAppendedId(Data.CONTENT_URI, rowId), null, null)
+        }
+        if (groupId != null && groupId > 0) {
+            val values = ContentValues().apply {
+                put(Data.RAW_CONTACT_ID, rawContactId)
+                put(Data.MIMETYPE, GroupMembership.CONTENT_ITEM_TYPE)
+                put(GroupMembership.GROUP_ROW_ID, groupId)
+            }
+            if (memberships.none { it.second == groupId }) {
+                resolver.insert(Data.CONTENT_URI, values)
+            } else if (groupId in managedGroupIds) {
                 resolver.insert(Data.CONTENT_URI, values)
             }
         }
@@ -983,69 +1005,122 @@ class ContactsRepository(
     }.getOrNull()
 
     /** Loads the user's system "Me Card" (ContactsContract.Profile) if available. */
-    suspend fun loadSystemProfileCard(): Pair<String, List<String>>? = withContext(Dispatchers.IO) {
-        runCatching {
-            var displayName = ""
-            val phones = mutableListOf<String>()
-            val profileDataUri = Uri.withAppendedPath(ContactsContract.Profile.CONTENT_URI, "data")
-            resolver.query(
-                profileDataUri,
-                arrayOf(Data.MIMETYPE, Data.DATA1, StructuredName.DISPLAY_NAME),
-                null,
-                null,
-                null,
-            )?.use { cursor ->
-                while (cursor.moveToNext()) {
-                    val mime = cursor.getString(0)
-                    val data1 = cursor.getString(1).orEmpty()
-                    if (displayName.isBlank() && cursor.getString(2) != null) {
-                        displayName = cursor.getString(2).orEmpty()
-                    }
-                    if (mime == Phone.CONTENT_ITEM_TYPE && data1.isNotBlank()) {
-                        phones.add(data1)
-                    }
+    suspend fun loadSystemProfileCard(): SystemProfileCard? = withContext(Dispatchers.IO) {
+        val rawContactExists = resolver.query(
+            ContactsContract.Profile.CONTENT_RAW_CONTACTS_URI,
+            arrayOf(RawContacts._ID),
+            null,
+            null,
+            null,
+        )?.use { it.moveToFirst() } ?: false
+        if (!rawContactExists) return@withContext null
+
+        var displayName = ""
+        val phones = mutableListOf<String>()
+        var photo: ByteArray? = null
+        val profileDataUri = Uri.withAppendedPath(ContactsContract.Profile.CONTENT_URI, "data")
+        resolver.query(
+            profileDataUri,
+            arrayOf(Data.MIMETYPE, Data.DATA1, StructuredName.DISPLAY_NAME, Photo.PHOTO),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            while (cursor.moveToNext()) {
+                val mime = cursor.getString(0)
+                val data1 = cursor.getString(1).orEmpty()
+                if (mime == StructuredName.CONTENT_ITEM_TYPE && displayName.isBlank()) {
+                    displayName = cursor.getString(2).orEmpty()
+                }
+                if (mime == Phone.CONTENT_ITEM_TYPE && data1.isNotBlank()) {
+                    phones.add(data1)
+                }
+                if (mime == Photo.CONTENT_ITEM_TYPE && photo == null) {
+                    photo = cursor.getBlob(3)
                 }
             }
-            if (displayName.isNotBlank() || phones.isNotEmpty()) {
-                displayName to phones.distinct()
-            } else null
-        }.getOrNull()
+        }
+        SystemProfileCard(displayName, phones.distinct(), photo)
     }
 
-    /** Saves or updates the user's system "Me Card" (ContactsContract.Profile). */
-    suspend fun saveSystemProfileCard(name: String, numbers: List<String>) = withContext(Dispatchers.IO) {
-        runCatching {
-            val profileRawUri = ContactsContract.Profile.CONTENT_RAW_CONTACTS_URI
-            val profileDataUri = Uri.withAppendedPath(ContactsContract.Profile.CONTENT_URI, "data")
-
-            resolver.delete(profileDataUri, null, null)
-
-            val rawValues = ContentValues().apply {
-                put(RawContacts.ACCOUNT_NAME, null as String?)
-                put(RawContacts.ACCOUNT_TYPE, null as String?)
+    /** Saves Seca's name, phone numbers and photo without touching other profile-card fields. */
+    suspend fun saveSystemProfileCard(name: String, numbers: List<String>, photo: ByteArray?) = withContext(Dispatchers.IO) {
+        val profileRawUri = ContactsContract.Profile.CONTENT_RAW_CONTACTS_URI
+        val existingRawId = resolver.query(
+            profileRawUri,
+            arrayOf(RawContacts._ID, RawContacts.ACCOUNT_TYPE),
+            null,
+            null,
+            null,
+        )?.use { cursor ->
+            var first: Long? = null
+            while (cursor.moveToNext()) {
+                val id = cursor.getLong(0)
+                if (cursor.isNull(1)) return@use id
+                if (first == null) first = id
             }
-            val rawUri = resolver.insert(profileRawUri, rawValues)
-            val rawId = rawUri?.let { ContentUris.parseId(it) }
+            first
+        }
+        val rawId = existingRawId ?: run {
+            if (name.isBlank() && numbers.none(String::isNotBlank) && photo == null) return@withContext
+            resolver.insert(
+                profileRawUri,
+                ContentValues().apply {
+                    put(RawContacts.ACCOUNT_NAME, null as String?)
+                    put(RawContacts.ACCOUNT_TYPE, null as String?)
+                },
+            )?.let(ContentUris::parseId) ?: return@withContext
+        }
 
-            if (rawId != null) {
-                if (name.isNotBlank()) {
-                    val nameValues = ContentValues().apply {
-                        put(Data.RAW_CONTACT_ID, rawId)
-                        put(Data.MIMETYPE, StructuredName.CONTENT_ITEM_TYPE)
-                        put(StructuredName.DISPLAY_NAME, name.trim())
-                    }
-                    resolver.insert(Data.CONTENT_URI, nameValues)
-                }
-                for (num in numbers.map { it.trim() }.filter { it.isNotBlank() }) {
-                    val phoneValues = ContentValues().apply {
-                        put(Data.RAW_CONTACT_ID, rawId)
-                        put(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE)
-                        put(Phone.NUMBER, num)
-                        put(Phone.TYPE, Phone.TYPE_MOBILE)
-                    }
-                    resolver.insert(Data.CONTENT_URI, phoneValues)
-                }
-            }
+        val nameSelection = "${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} = ?"
+        val rawIdArg = rawId.toString()
+        resolver.delete(
+            Data.CONTENT_URI,
+            nameSelection,
+            arrayOf(rawIdArg, StructuredName.CONTENT_ITEM_TYPE),
+        )
+        if (name.isNotBlank()) {
+            resolver.insert(
+                Data.CONTENT_URI,
+                ContentValues().apply {
+                    put(Data.RAW_CONTACT_ID, rawId)
+                    put(Data.MIMETYPE, StructuredName.CONTENT_ITEM_TYPE)
+                    put(StructuredName.DISPLAY_NAME, name.trim())
+                },
+            )
+        }
+
+        resolver.delete(
+            Data.CONTENT_URI,
+            nameSelection,
+            arrayOf(rawIdArg, Phone.CONTENT_ITEM_TYPE),
+        )
+        numbers.map(String::trim).filter(String::isNotBlank).forEach { number ->
+            resolver.insert(
+                Data.CONTENT_URI,
+                ContentValues().apply {
+                    put(Data.RAW_CONTACT_ID, rawId)
+                    put(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE)
+                    put(Phone.NUMBER, number)
+                    put(Phone.TYPE, Phone.TYPE_MOBILE)
+                },
+            )
+        }
+
+        resolver.delete(
+            Data.CONTENT_URI,
+            nameSelection,
+            arrayOf(rawIdArg, Photo.CONTENT_ITEM_TYPE),
+        )
+        if (photo != null) {
+            resolver.insert(
+                Data.CONTENT_URI,
+                ContentValues().apply {
+                    put(Data.RAW_CONTACT_ID, rawId)
+                    put(Data.MIMETYPE, Photo.CONTENT_ITEM_TYPE)
+                    put(Photo.PHOTO, photo)
+                },
+            )
         }
     }
 

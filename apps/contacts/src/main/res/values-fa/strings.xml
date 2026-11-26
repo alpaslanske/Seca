@@ -27,7 +27,7 @@
     <string name="permission_read_profiles">خواندن نمایه‌های Seca</string>
     <string name="permission_title">مخاطبین شما، در گوشی شما</string>
     <string name="privacy">حریم خصوصی</string>
-    <string name="privacy_text">مخاطبین Seca دسترسی به اینترنت ندارد. مخاطبین، نمایه‌ها و تنظیمات شما هرگز از دستگاه خارج نمی‌شوند و مخاطبینی که اینجا ساخته می‌شوند با هیچ حسابی همگام‌سازی نمی‌شوند.</string>
+    <string name="privacy_text">مخاطبین Seca دسترسی به اینترنت ندارد. گروه‌های نمایه در مخاطبین تلفن ذخیره می‌شوند و ممکن است از طریق حساب مخاطبین، مانند Google، همگام‌سازی شوند. مخاطبین ساخته‌شده در اینجا از تنظیمات همگام‌سازی حساب انتخاب‌شده پیروی می‌کنند.</string>
     <string name="privacy_title">همه‌چیز در همین گوشی می‌ماند</string>
     <string name="protection">محافظت</string>
     <string name="settings">تنظیمات</string>

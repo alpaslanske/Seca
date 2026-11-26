@@ -228,7 +228,7 @@ internal fun DetailScreen(
                 .padding(padding),
         ) {
             when {
-                current != null -> DetailContent(current, ui, viewModel)
+                current != null -> DetailContent(current, ui, viewModel, withWrite)
                 missing -> SecaEmptyState(
                     icon = SecaIcons.Contacts,
                     title = stringResource(R.string.contact_not_found),
@@ -302,7 +302,12 @@ internal fun DetailScreen(
 }
 
 @Composable
-private fun DetailContent(detail: ContactDetail, ui: ContactsUi, viewModel: ContactsViewModel) {
+private fun DetailContent(
+    detail: ContactDetail,
+    ui: ContactsUi,
+    viewModel: ContactsViewModel,
+    withWrite: (() -> Unit) -> Unit,
+) {
     val context = LocalContext.current
     val resources = LocalResources.current
     val profile = ui.profileForKey(detail.lookupKey)
@@ -337,7 +342,9 @@ private fun DetailContent(detail: ContactDetail, ui: ContactsUi, viewModel: Cont
             ProfilePill(
                 ui = ui,
                 profile = profile,
-                onAssign = { viewModel.assignProfile(detail.lookupKey, it.id) },
+                onAssign = { selected ->
+                    withWrite { viewModel.assignProfile(detail.lookupKey, selected.id) }
+                },
                 modifier = Modifier.padding(top = 12.dp),
             )
         }

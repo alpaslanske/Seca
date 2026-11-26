@@ -90,6 +90,7 @@ internal fun HomeScreen(
     viewModel: ContactsViewModel,
     listState: LazyListState,
     onOpenSibling: (SecaAppIdentity) -> Unit,
+    withWrite: (() -> Unit) -> Unit = { it() },
     /** Another app asked for one contact: touching a row answers it rather than opening it. */
     onPick: ((Long) -> Unit)? = null,
 ) {
@@ -178,7 +179,7 @@ internal fun HomeScreen(
             confirmLabel = stringResource(R.string.rename),
             onDismiss = { renamingProfile = null },
             onConfirm = {
-                viewModel.renameProfile(profile.id, it)
+                withWrite { viewModel.renameProfile(profile.id, it) }
                 renamingProfile = null
             },
         )
@@ -193,7 +194,7 @@ internal fun HomeScreen(
             dismissLabel = stringResource(R.string.cancel),
             destructive = true,
             onConfirm = {
-                viewModel.deleteProfile(profile.id)
+                withWrite { viewModel.deleteProfile(profile.id) }
                 deletingProfile = null
             },
         )
@@ -205,7 +206,7 @@ internal fun HomeScreen(
             confirmLabel = stringResource(R.string.create),
             onDismiss = { addingProfile = false },
             onConfirm = {
-                viewModel.addProfile(it)
+                withWrite { viewModel.addProfile(it) }
                 addingProfile = false
             },
         )

@@ -69,6 +69,7 @@
     <string name="contacts_already_here">These contacts are already on this phone</string>
     <string name="contact_not_saved">This phone refused to save the contact. Open its own Contacts app, look in the settings for where new contacts are saved, and pick an account there.</string>
     <string name="contact_not_saved_because">This phone refused to save the contact: %1$s</string>
+    <string name="profile_sync_failed">Could not sync the profile with local contacts: %1$s</string>
     <string name="contacts_imported_some_refused">Added: %1$d. Refused by the phone: %2$d.</string>
     <plurals name="contacts_count">
         <item quantity="one">%d contact</item>
@@ -174,7 +175,7 @@
     <string name="photo_not_saved">This phone would not store the photo for this contact.</string>
     <string name="pick_date">Pick a date</string>
     <string name="privacy">Privacy</string>
-    <string name="privacy_text">Seca Contacts has no Internet access. Your contacts, profiles and settings never leave the device, and contacts created here are synced with no account.</string>
+    <string name="privacy_text">Seca Contacts has no Internet access. Profile groups are written to the phone contacts and may sync through the contact account, such as Google. Contacts created here follow the sync settings of their selected account.</string>
     <string name="privacy_title">Everything stays on this phone</string>
     <string name="profile">Profile</string>
     <string name="profile_empty">“%1$s” is empty</string>

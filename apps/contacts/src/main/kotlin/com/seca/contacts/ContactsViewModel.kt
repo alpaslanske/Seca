@@ -46,6 +46,7 @@ import kotlinx.coroutines.flow.conflate
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.CancellationException
 import androidx.annotation.PluralsRes
 import androidx.annotation.StringRes
 import com.seca.core.design.SecaPaletteSpec
@@ -192,8 +193,12 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     fun start() {
         if (watching != null) return
         watching = viewModelScope.launch {
+            loadMyCard()
             load()
-            repository.changes().conflate().collect { load() }
+            repository.changes().conflate().collect {
+                loadMyCard()
+                load()
+            }
         }
     }
 
@@ -282,10 +287,26 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     fun assignProfile(lookupKey: String, profileId: String) {
         store.assign(lookupKey, profileId)
         viewModelScope.launch {
-            val groupId = store.systemGroupIdFor(profileId)
-            repository.assignContactToGroup(lookupKey, groupId)
+            mirrorAssignment(lookupKey, profileId)
         }
         refreshPreferences()
+    }
+
+    private suspend fun mirrorAssignment(lookupKey: String, profileId: String) {
+        try {
+            val profile = store.profiles().firstOrNull { it.id == profileId }
+            val groupId = if (profileId == ProfileStore.Principal.id) {
+                null
+            } else {
+                store.systemGroupIdFor(profileId)
+                    ?: profile?.let { repository.ensureGroup(it.name) }?.also { store.setSystemGroupIdFor(profileId, it) }
+            }
+            repository.assignContactToGroup(lookupKey, groupId, store.groupMaps().values.toSet())
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            reportProfileSyncFailure(e)
+        }
     }
 
     /** Null goes back to the wallpaper colours. */
@@ -480,6 +501,11 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         Toast.makeText(getApplication(), text, Toast.LENGTH_LONG).show()
     }
 
+    private fun reportProfileSyncFailure(error: Exception) {
+        val reason = error.message?.takeIf(String::isNotBlank) ?: error.javaClass.simpleName
+        toast(text(R.string.profile_sync_failed, reason))
+    }
+
     /** Says something out loud for a page that did its own work, such as the SIM card's (#97). */
     fun say(text: String) = toast(text)
 
@@ -524,24 +550,48 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
 
     fun saveMyCard(name: String, numbers: List<String>) {
         myCards.save(name, numbers)
+        _ui.update { it.copy(myCard = myCards.load()) }
+    }
+
+    fun syncMyCardToSystem() {
         viewModelScope.launch {
-            repository.saveSystemProfileCard(name, numbers)
+            val card = myCards.load()
+            try {
+                repository.saveSystemProfileCard(card.name, card.numbers, myCards.photoBytes())
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                reportProfileSyncFailure(e)
+            }
             loadMyCard()
         }
     }
 
-    fun setMyPhoto(uri: Uri) {
-        viewModelScope.launch { if (myCards.setPhoto(uri)) loadMyCard() }
+    fun setMyPhoto(uri: Uri, afterSaved: (() -> Unit)? = null) {
+        viewModelScope.launch {
+            if (myCards.setPhoto(uri)) {
+                val photo = myCards.photo()?.asImageBitmap()
+                _ui.update { it.copy(myPhoto = photo) }
+                afterSaved?.invoke()
+            }
+        }
     }
 
     /** The square the owner framed, rather than whatever happened to be in the middle. */
-    fun setMyPhoto(jpeg: ByteArray) {
-        viewModelScope.launch { if (myCards.setPhoto(jpeg)) loadMyCard() }
+    fun setMyPhoto(jpeg: ByteArray, afterSaved: (() -> Unit)? = null) {
+        viewModelScope.launch {
+            if (myCards.setPhoto(jpeg)) {
+                val photo = myCards.photo()?.asImageBitmap()
+                _ui.update { it.copy(myPhoto = photo) }
+                afterSaved?.invoke()
+            }
+        }
     }
 
-    fun removeMyPhoto() {
+    fun removeMyPhoto(afterRemoved: (() -> Unit)? = null) {
         myCards.removePhoto()
-        loadMyCard()
+        _ui.update { it.copy(myPhoto = null) }
+        afterRemoved?.invoke()
     }
 
     /** Reads the SIM lines again, e.g. once the owner allowed it; nothing without the permissions. */
@@ -555,12 +605,28 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private fun loadMyCard() {
         viewModelScope.launch {
             var card = myCards.load()
-            if (card.name.isBlank() && card.numbers.isEmpty()) {
-                val systemCard = repository.loadSystemProfileCard()
-                if (systemCard != null) {
-                    myCards.save(systemCard.first, systemCard.second)
-                    card = myCards.load()
+            val canReadContacts = getApplication<Application>()
+                .checkSelfPermission(android.Manifest.permission.READ_CONTACTS) ==
+                android.content.pm.PackageManager.PERMISSION_GRANTED
+            val systemCard = if (canReadContacts) {
+                try {
+                    repository.loadSystemProfileCard()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    reportProfileSyncFailure(e)
+                    null
                 }
+            } else {
+                null
+            }
+            if (systemCard != null) {
+                myCards.save(
+                    systemCard.name.ifBlank { card.name },
+                    systemCard.numbers.ifEmpty { card.numbers },
+                )
+                systemCard.photo?.let { myCards.replacePhoto(it) }
+                card = myCards.load()
             }
             val photo = myCards.photo()?.asImageBitmap()
             _ui.update { it.copy(myCard = card, myPhoto = photo) }
@@ -630,8 +696,14 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
             // The provider rebuilds a contact's key when its name changes, so the profile is
             // filed again under the key the contact has now, and the old one is let go.
             val currentKey = repository.lookupKeyOf(id)
-            existing?.lookupKey?.takeIf { it != currentKey }?.let { store.assign(it, ProfileStore.Principal.id) }
-            if (currentKey != null) store.assign(currentKey, profileId)
+            existing?.lookupKey?.takeIf { it != currentKey }?.let {
+                store.assign(it, ProfileStore.Principal.id)
+                mirrorAssignment(it, ProfileStore.Principal.id)
+            }
+            if (currentKey != null) {
+                store.assign(currentKey, profileId)
+                mirrorAssignment(currentKey, profileId)
+            }
             refreshPreferences()
             load()
             if (existing == null) backStack[backStack.lastIndex] = Screen.Detail(id) else back()
@@ -709,18 +781,27 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     private suspend fun syncSystemGroups() {
         runCatching {
             val systemLabels = repository.labels()
-            val currentProfiles = store.profiles()
+            var currentProfiles = store.profiles()
             for (label in systemLabels) {
-                val existing = currentProfiles.firstOrNull { it.name.equals(label.title, ignoreCase = true) }
+                val mapped = store.groupMaps().entries.firstOrNull { it.value == label.id }?.key
+                val existing = currentProfiles.firstOrNull { it.id == mapped }
+                    ?: currentProfiles.firstOrNull { it.name.equals(label.title, ignoreCase = true) }
                 val profile = existing ?: store.addProfile(label.title)
+                if (profile.name != label.title) store.renameProfile(profile.id, label.title)
                 store.setSystemGroupIdFor(profile.id, label.id)
-                val members = repository.membersOf(label.id)
-                for (lookupKey in members) {
-                    if (store.assignments()[lookupKey].isNullOrEmpty()) {
-                        store.assign(lookupKey, profile.id)
-                    }
-                }
+                currentProfiles = store.profiles()
             }
+
+            val profilesByGroup = store.profiles()
+                .mapNotNull { profile -> store.systemGroupIdFor(profile.id)?.let { it to profile.id } }
+                .toMap()
+            val groupedAssignments = linkedMapOf<String, String>()
+            profilesByGroup.forEach { (groupId, profileId) ->
+                repository.membersOf(groupId).forEach { lookupKey -> groupedAssignments[lookupKey] = profileId }
+            }
+            val mappedProfileIds = profilesByGroup.values.toSet()
+            val preserved = store.assignments().filterValues { it !in mappedProfileIds }
+            store.assignAll(preserved + groupedAssignments)
         }
     }
 

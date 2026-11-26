@@ -69,6 +69,7 @@
     <string name="contacts_already_here">Bu kişiler zaten bu telefonda var</string>
     <string name="contact_not_saved">Bu telefon kişiyi kaydetmeyi reddetti. Telefonun kendi Kişiler uygulamasını açın, ayarlarda yeni kişilerin nereye kaydedildiğine bakın ve oradan bir hesap seçin.</string>
     <string name="contact_not_saved_because">Bu telefon kişiyi kaydetmeyi reddetti: %1$s</string>
+    <string name="profile_sync_failed">Profil yerel kişilerle eşitlenemedi: %1$s</string>
     <string name="contacts_imported_some_refused">Eklenen: %1$d. Telefonun reddettiği kişi: %2$d.</string>
     <plurals name="contacts_count">
         <item quantity="one">%d kişi</item>
@@ -174,7 +175,7 @@
     <string name="photo_not_saved">Bu telefon, bu kişinin fotoğrafını depolamadı.</string>
     <string name="pick_date">Tarih seç</string>
     <string name="privacy">Gizlilik</string>
-    <string name="privacy_text">Seca Kişiler\'in internet erişimi yoktur. Kişileriniz, profilleriniz ve ayarlarınız cihazdan asla çıkmaz; burada oluşturulan kişiler hiçbir hesapla eşitlenmez.</string>
+    <string name="privacy_text">Seca Kişiler\'in internet erişimi yoktur. Profil grupları telefonun kişilerine yazılır ve Google gibi kişi hesabı sağlayıcılarıyla eşitlenebilir. Burada oluşturulan kişiler, seçilen hesabın eşitleme ayarlarına uyar.</string>
     <string name="privacy_title">Her şey bu telefonda kalır</string>
     <string name="profile">Profil</string>
     <string name="profile_empty">“%1$s” boş</string>

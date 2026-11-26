@@ -140,12 +140,13 @@ fun ContactsApp(
                         viewModel = viewModel,
                         listState = homeListState,
                         onOpenSibling = { openSibling(context, it) },
+                        withWrite = withWrite,
                         onPick = onPick,
                     )
                     is Screen.Detail -> DetailScreen(screen.id, ui, viewModel, withWrite)
                     is Screen.Edit -> EditScreen(screen.id, ui, viewModel, withWrite, prefillPhone = screen.prefillPhone, prefillName = screen.prefillName)
                     Screen.Settings -> SettingsScreen(ui, viewModel, withWrite)
-                    Screen.MyCard -> MyCardScreen(ui, viewModel)
+                    Screen.MyCard -> MyCardScreen(ui, viewModel, withWrite)
                     DuplicatesRoute -> DuplicatesScreen(ui, viewModel, withWrite)
                 }
             }

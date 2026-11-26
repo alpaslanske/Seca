@@ -457,7 +457,7 @@ internal fun SettingsScreen(ui: ContactsUi, viewModel: ContactsViewModel, withWr
             confirmLabel = stringResource(R.string.create),
             onDismiss = { adding = false },
             onConfirm = {
-                viewModel.addProfile(it)
+                withWrite { viewModel.addProfile(it) }
                 adding = false
             },
         )
@@ -471,7 +471,7 @@ internal fun SettingsScreen(ui: ContactsUi, viewModel: ContactsViewModel, withWr
             confirmLabel = stringResource(R.string.create),
             dismissLabel = stringResource(R.string.cancel),
             onConfirm = {
-                viewModel.profileFromLabel(label)
+                withWrite { viewModel.profileFromLabel(label) }
                 importing = null
             },
         )
@@ -483,7 +483,7 @@ internal fun SettingsScreen(ui: ContactsUi, viewModel: ContactsViewModel, withWr
             confirmLabel = stringResource(R.string.rename),
             onDismiss = { renaming = null },
             onConfirm = {
-                viewModel.renameProfile(profile.id, it)
+                withWrite { viewModel.renameProfile(profile.id, it) }
                 renaming = null
             },
         )
@@ -498,7 +498,7 @@ internal fun SettingsScreen(ui: ContactsUi, viewModel: ContactsViewModel, withWr
             dismissLabel = stringResource(R.string.cancel),
             destructive = true,
             onConfirm = {
-                        viewModel.deleteProfile(profile.id)
+                        withWrite { viewModel.deleteProfile(profile.id) }
                         deleting = null
                     },
         )
