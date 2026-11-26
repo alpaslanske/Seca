@@ -902,6 +902,153 @@ class ContactsRepository(
         }.getOrNull().orEmpty().distinct()
     }
 
+    /** Ensures a system group with [title] exists in ContactsContract.Groups, creating it if needed. */
+    suspend fun ensureGroup(title: String): Long? = withContext(Dispatchers.IO) {
+        val trimmed = title.trim()
+        if (trimmed.isBlank()) return@withContext null
+        runCatching {
+            resolver.query(
+                Groups.CONTENT_URI,
+                arrayOf(Groups._ID),
+                "${Groups.TITLE} = ? AND ${Groups.DELETED} = 0",
+                arrayOf(trimmed),
+                null,
+            )?.use { cursor ->
+                if (cursor.moveToNext()) return@withContext cursor.getLong(0)
+            }
+            val values = ContentValues().apply {
+                put(Groups.TITLE, trimmed)
+            }
+            resolver.insert(Groups.CONTENT_URI, values)?.let { ContentUris.parseId(it) }
+        }.getOrNull()
+    }
+
+    /** Renames a system group in ContactsContract.Groups. */
+    suspend fun renameGroup(groupId: Long, newTitle: String) = withContext(Dispatchers.IO) {
+        val trimmed = newTitle.trim()
+        if (trimmed.isBlank()) return@withContext
+        runCatching {
+            val values = ContentValues().apply {
+                put(Groups.TITLE, trimmed)
+            }
+            resolver.update(
+                Groups.CONTENT_URI,
+                values,
+                "${Groups._ID} = ?",
+                arrayOf(groupId.toString()),
+            )
+        }
+    }
+
+    /** Deletes a system group in ContactsContract.Groups. */
+    suspend fun deleteGroup(groupId: Long) = withContext(Dispatchers.IO) {
+        runCatching {
+            resolver.delete(
+                Data.CONTENT_URI,
+                "${Data.MIMETYPE} = ? AND ${GroupMembership.GROUP_ROW_ID} = ?",
+                arrayOf(GroupMembership.CONTENT_ITEM_TYPE, groupId.toString()),
+            )
+            resolver.delete(
+                Groups.CONTENT_URI,
+                "${Groups._ID} = ?",
+                arrayOf(groupId.toString()),
+            )
+        }
+    }
+
+    /** Assigns a contact (by [lookupKey]) to a system group [groupId], removing any previous group memberships. */
+    suspend fun assignContactToGroup(lookupKey: String, groupId: Long?) = withContext(Dispatchers.IO) {
+        if (lookupKey.isBlank()) return@withContext
+        runCatching {
+            val rawContactId = primaryRawContact(idFromLookup(lookupKey) ?: return@withContext) ?: return@withContext
+            resolver.delete(
+                Data.CONTENT_URI,
+                "${Data.RAW_CONTACT_ID} = ? AND ${Data.MIMETYPE} = ?",
+                arrayOf(rawContactId.toString(), GroupMembership.CONTENT_ITEM_TYPE),
+            )
+            if (groupId != null && groupId > 0) {
+                val values = ContentValues().apply {
+                    put(Data.RAW_CONTACT_ID, rawContactId)
+                    put(Data.MIMETYPE, GroupMembership.CONTENT_ITEM_TYPE)
+                    put(GroupMembership.GROUP_ROW_ID, groupId)
+                }
+                resolver.insert(Data.CONTENT_URI, values)
+            }
+        }
+    }
+
+    private fun idFromLookup(lookupKey: String): Long? = runCatching {
+        val uri = Uri.withAppendedPath(Contacts.CONTENT_LOOKUP_URI, lookupKey)
+        Contacts.lookupContact(resolver, uri)?.let(ContentUris::parseId)
+    }.getOrNull()
+
+    /** Loads the user's system "Me Card" (ContactsContract.Profile) if available. */
+    suspend fun loadSystemProfileCard(): Pair<String, List<String>>? = withContext(Dispatchers.IO) {
+        runCatching {
+            var displayName = ""
+            val phones = mutableListOf<String>()
+            val profileDataUri = Uri.withAppendedPath(ContactsContract.Profile.CONTENT_URI, "data")
+            resolver.query(
+                profileDataUri,
+                arrayOf(Data.MIMETYPE, Data.DATA1, StructuredName.DISPLAY_NAME),
+                null,
+                null,
+                null,
+            )?.use { cursor ->
+                while (cursor.moveToNext()) {
+                    val mime = cursor.getString(0)
+                    val data1 = cursor.getString(1).orEmpty()
+                    if (displayName.isBlank() && cursor.getString(2) != null) {
+                        displayName = cursor.getString(2).orEmpty()
+                    }
+                    if (mime == Phone.CONTENT_ITEM_TYPE && data1.isNotBlank()) {
+                        phones.add(data1)
+                    }
+                }
+            }
+            if (displayName.isNotBlank() || phones.isNotEmpty()) {
+                displayName to phones.distinct()
+            } else null
+        }.getOrNull()
+    }
+
+    /** Saves or updates the user's system "Me Card" (ContactsContract.Profile). */
+    suspend fun saveSystemProfileCard(name: String, numbers: List<String>) = withContext(Dispatchers.IO) {
+        runCatching {
+            val profileRawUri = ContactsContract.Profile.CONTENT_RAW_CONTACTS_URI
+            val profileDataUri = Uri.withAppendedPath(ContactsContract.Profile.CONTENT_URI, "data")
+
+            resolver.delete(profileDataUri, null, null)
+
+            val rawValues = ContentValues().apply {
+                put(RawContacts.ACCOUNT_NAME, null as String?)
+                put(RawContacts.ACCOUNT_TYPE, null as String?)
+            }
+            val rawUri = resolver.insert(profileRawUri, rawValues)
+            val rawId = rawUri?.let { ContentUris.parseId(it) }
+
+            if (rawId != null) {
+                if (name.isNotBlank()) {
+                    val nameValues = ContentValues().apply {
+                        put(Data.RAW_CONTACT_ID, rawId)
+                        put(Data.MIMETYPE, StructuredName.CONTENT_ITEM_TYPE)
+                        put(StructuredName.DISPLAY_NAME, name.trim())
+                    }
+                    resolver.insert(Data.CONTENT_URI, nameValues)
+                }
+                for (num in numbers.map { it.trim() }.filter { it.isNotBlank() }) {
+                    val phoneValues = ContentValues().apply {
+                        put(Data.RAW_CONTACT_ID, rawId)
+                        put(Data.MIMETYPE, Phone.CONTENT_ITEM_TYPE)
+                        put(Phone.NUMBER, num)
+                        put(Phone.TYPE, Phone.TYPE_MOBILE)
+                    }
+                    resolver.insert(Data.CONTENT_URI, phoneValues)
+                }
+            }
+        }
+    }
+
     /** The contacts link handed over by another app, or null. */
     suspend fun contactIdFor(uri: Uri): Long? = withContext(Dispatchers.IO) {
         try {

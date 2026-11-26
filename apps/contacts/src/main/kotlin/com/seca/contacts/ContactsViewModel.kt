@@ -247,21 +247,44 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
     fun addProfile(name: String) {
         val profile = store.addProfile(name)
         store.setCurrentProfile(profile.id)
+        viewModelScope.launch {
+            repository.ensureGroup(name)?.let { groupId ->
+                store.setSystemGroupIdFor(profile.id, groupId)
+            }
+        }
         refreshPreferences()
     }
 
     fun renameProfile(id: String, name: String) {
         store.renameProfile(id, name)
+        viewModelScope.launch {
+            val groupId = store.systemGroupIdFor(id) ?: repository.ensureGroup(name)
+            if (groupId != null) {
+                store.setSystemGroupIdFor(id, groupId)
+                repository.renameGroup(groupId, name)
+            }
+        }
         refreshPreferences()
     }
 
     fun deleteProfile(id: String) {
+        val groupId = store.systemGroupIdFor(id)
         store.deleteProfile(id)
+        if (groupId != null) {
+            store.removeSystemGroupIdFor(id)
+            viewModelScope.launch {
+                repository.deleteGroup(groupId)
+            }
+        }
         refreshPreferences()
     }
 
     fun assignProfile(lookupKey: String, profileId: String) {
         store.assign(lookupKey, profileId)
+        viewModelScope.launch {
+            val groupId = store.systemGroupIdFor(profileId)
+            repository.assignContactToGroup(lookupKey, groupId)
+        }
         refreshPreferences()
     }
 
@@ -501,7 +524,10 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
 
     fun saveMyCard(name: String, numbers: List<String>) {
         myCards.save(name, numbers)
-        loadMyCard()
+        viewModelScope.launch {
+            repository.saveSystemProfileCard(name, numbers)
+            loadMyCard()
+        }
     }
 
     fun setMyPhoto(uri: Uri) {
@@ -528,7 +554,14 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
 
     private fun loadMyCard() {
         viewModelScope.launch {
-            val card = myCards.load()
+            var card = myCards.load()
+            if (card.name.isBlank() && card.numbers.isEmpty()) {
+                val systemCard = repository.loadSystemProfileCard()
+                if (systemCard != null) {
+                    myCards.save(systemCard.first, systemCard.second)
+                    card = myCards.load()
+                }
+            }
             val photo = myCards.photo()?.asImageBitmap()
             _ui.update { it.copy(myCard = card, myPhoto = photo) }
         }
@@ -673,7 +706,26 @@ class ContactsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch { load() }
     }
 
+    private suspend fun syncSystemGroups() {
+        runCatching {
+            val systemLabels = repository.labels()
+            val currentProfiles = store.profiles()
+            for (label in systemLabels) {
+                val existing = currentProfiles.firstOrNull { it.name.equals(label.title, ignoreCase = true) }
+                val profile = existing ?: store.addProfile(label.title)
+                store.setSystemGroupIdFor(profile.id, label.id)
+                val members = repository.membersOf(label.id)
+                for (lookupKey in members) {
+                    if (store.assignments()[lookupKey].isNullOrEmpty()) {
+                        store.assign(lookupKey, profile.id)
+                    }
+                }
+            }
+        }
+    }
+
     private suspend fun load() {
+        syncSystemGroups()
         val contacts = repository.contacts(HiddenAccounts.hidden(getApplication()), store.nameOrder())
         // Every number is read here, off the main thread: the list then only
         // looks results up, and scrolling never waits on parsing.

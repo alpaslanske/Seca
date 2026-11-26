@@ -187,6 +187,25 @@ class ProfileStore(context: Context) {
         announceChange()
     }
 
+    fun groupMaps(): Map<String, Long> {
+        val json = prefs.getString(KEY_GROUP_MAPS, null)?.let { JSONObject(it) } ?: return emptyMap()
+        return json.keys().asSequence().associateWith { json.getLong(it) }
+    }
+
+    fun systemGroupIdFor(profileId: String): Long? = groupMaps()[profileId]
+
+    fun setSystemGroupIdFor(profileId: String, groupId: Long) {
+        val updated = groupMaps().toMutableMap()
+        updated[profileId] = groupId
+        prefs.edit { putString(KEY_GROUP_MAPS, JSONObject(updated.toMap<String, Any?>()).toString()) }
+    }
+
+    fun removeSystemGroupIdFor(profileId: String) {
+        val updated = groupMaps().toMutableMap()
+        updated.remove(profileId)
+        prefs.edit { putString(KEY_GROUP_MAPS, JSONObject(updated.toMap<String, Any?>()).toString()) }
+    }
+
     private fun customProfiles(): List<Profile> {
         val json = prefs.getString(KEY_PROFILES, null)?.let { JSONArray(it) } ?: return emptyList()
         return (0 until json.length()).map { index ->
@@ -229,5 +248,6 @@ class ProfileStore(context: Context) {
     private const val KEY_PALETTE = "palette"
         private const val KEY_BLACK = "black_theme"
         private const val KEY_MY_CARD = "show_my_card"
+        private const val KEY_GROUP_MAPS = "group_maps"
     }
 }
